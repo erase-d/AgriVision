@@ -76,14 +76,6 @@ Decision Support – Gives advice based on deviation from last-year average
 
 ✅ Deploy as web dashboard so farmers can check from mobile phones
 
-DATASET LINKS:::
-
-https://github.com/erase-d/AgriVision/blob/main/AgriVision/wheat_prices.csv
-https://github.com/erase-d/AgriVision/blob/main/AgriVision/tomato_prices.csv
-https://github.com/erase-d/AgriVision/blob/main/AgriVision/rice_prices.csv
-https://github.com/erase-d/AgriVision/blob/main/AgriVision/potato_prices.csv
-https://github.com/erase-d/AgriVision/blob/main/AgriVision/onion_prices.csv
-
 
 Control Flow::::
      ┌──────────────────┐
@@ -127,5 +119,4 @@ Control Flow::::
         │ - When to sell     │
         │ - Risk warning     │
         └─────────────────────┘
-
 

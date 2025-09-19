@@ -474,21 +474,32 @@
                 </div>
             </div>
 
-            <!-- Crop Selection with Animation -->
-            <div class="crop-selector">
-                <div class="selector-label">
-                    <i class="fas fa-arrow-down"></i>
-                    <span>Choose Your Crop</span>
+            <!-- Crop and Location Selection -->
+            <div class="crop-selector" style="gap: 20px; flex-wrap: wrap;">
+                <div>
+                    <div class="selector-label">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>Choose Your Crop</span>
+                    </div>
+                    <select id="cropSelect" class="crop-dropdown">
+                        <option value="">Select a Crop</option>
+                        <option value="tomato">🍅 Tomato</option>
+                        <option value="rice">🌾 Rice</option>
+                        <option value="wheat">🌾 Wheat</option>
+                        <option value="potato">🥔 Potato</option>
+                        <option value="onion">🧅 Onion</option>
+                    </select>
                 </div>
-                <select id="cropSelect" class="crop-dropdown">
-                    <option value="">Select a Crop</option>
-                    <option value="tomato">🍅 Tomato</option>
-                    <option value="rice">🌾 Rice</option>
-                    <option value="wheat">🌾 Wheat</option>
-                    <option value="potato">🥔 Potato</option>
-                    <option value="onion">🧅 Onion</option>
-                </select>
-                <div class="selector-hint">Click to see price predictions and recommendations</div>
+                <div>
+                    <div class="selector-label">
+                        <i class="fas fa-location-dot"></i>
+                        <span>Choose Location</span>
+                    </div>
+                    <select id="locationSelect" class="crop-dropdown">
+                        <option value="">All/Default</option>
+                    </select>
+                </div>
+                <div class="selector-hint" style="width: 100%;">Select crop and location to see location-specific insights</div>
             </div>
 
             <!-- Quick Stats Preview -->
@@ -566,6 +577,14 @@
                     <h3>Overall Recommendation</h3>
                     <p id="overallAdviceText">Select a crop to get recommendations</p>
                 </div>
+                <div id="locationSellAdvice" class="card" style="margin-bottom: 20px;">
+                    <h3 style="color:#00d4ff; margin-bottom:10px;">Where to Sell Now</h3>
+                    <div id="bestLocationText" style="color:#b0b0b0;">Select a crop to compare locations</div>
+                </div>
+                <div id="growAdvice" class="card" style="margin-bottom: 20px;">
+                    <h3 style="color:#00d4ff; margin-bottom:10px;">What to Grow (on price hike)</h3>
+                    <div id="growList" style="color:#b0b0b0;">Select a location to see crops on the rise</div>
+                </div>
                 <h3 style="margin-bottom: 20px; color: #00d4ff;">Monthly Forecast & Advice</h3>
                 <div id="forecastList" class="forecast-list"></div>
             </div>
@@ -575,11 +594,14 @@
     <script>
         const API_BASE = 'http://127.0.0.1:8000';
         let currentCrop = null;
+        let currentLocation = '';
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             const cropSelect = document.getElementById('cropSelect');
-            cropSelect.addEventListener('change', handleCropSelection);
+            cropSelect.addEventListener('change', () => handleSelection());
+            const locationSelect = document.getElementById('locationSelect');
+            locationSelect.addEventListener('change', () => handleSelection());
             
             // Add interactive animations
             addInteractiveAnimations();
@@ -587,6 +609,7 @@
             // Test backend connection and load crops
             testBackendConnection();
             loadAvailableCrops();
+            loadAvailableLocations();
         });
 
         async function testBackendConnection() {
@@ -631,6 +654,49 @@
                 }
             } catch (error) {
                 console.error('Error loading crops:', error);
+            }
+        }
+
+        async function loadAvailableLocations() {
+            try {
+                const response = await fetch(`${API_BASE}/locations`);
+                const data = await response.json();
+                const select = document.getElementById('locationSelect');
+                select.innerHTML = '<option value="">All/Default</option>';
+                if (data && data.locations) {
+                    Object.entries(data.locations).forEach(([key, label]) => {
+                        const opt = document.createElement('option');
+                        opt.value = key;
+                        opt.textContent = label;
+                        select.appendChild(opt);
+                    });
+                } else {
+                    // Fallback static options
+                    const opts = [
+                        { value: 'food_bazaar', label: 'Night City' },
+                        { value: 'reliance_digital', label: 'E District' }
+                    ];
+                    opts.forEach(o => {
+                        const opt = document.createElement('option');
+                        opt.value = o.value;
+                        opt.textContent = o.label;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (e) {
+                console.warn('Could not load locations, using defaults');
+                const select = document.getElementById('locationSelect');
+                select.innerHTML = '<option value="">All/Default</option>';
+                const opts = [
+                    { value: 'food_bazaar', label: 'Night City' },
+                    { value: 'reliance_digital', label: 'E District' }
+                ];
+                opts.forEach(o => {
+                    const opt = document.createElement('option');
+                    opt.value = o.value;
+                    opt.textContent = o.label;
+                    select.appendChild(opt);
+                });
             }
         }
 
@@ -696,23 +762,35 @@
             }, 3000);
         }
 
-        async function handleCropSelection() {
+        async function handleSelection() {
             const cropSelect = document.getElementById('cropSelect');
+            const locationSelect = document.getElementById('locationSelect');
             const selectedCrop = cropSelect.value;
-            
+            const selectedLocation = locationSelect.value;
+
+            currentLocation = selectedLocation;
+
             if (!selectedCrop) {
+                currentCrop = null;
                 hideDashboard();
                 hideQuickStats();
+                document.getElementById('bestLocationText').textContent = 'Select a crop to compare locations';
+                document.getElementById('growList').textContent = 'Select a location to see crops on the rise';
                 return;
             }
 
             currentCrop = selectedCrop;
             showLoading();
-            
+
             try {
+                // Clear previous series to ensure chart redraw
+                window.historicalData = null;
+                window.forecastSeries = null;
+                document.getElementById('chart').innerHTML = '';
                 await Promise.all([
-                    loadCropData(selectedCrop),
-                    loadForecast(selectedCrop)
+                    loadCropData(selectedCrop, selectedLocation),
+                    loadForecast(selectedCrop, selectedLocation),
+                    loadRecommendations(selectedCrop, selectedLocation)
                 ]);
                 showQuickStats();
                 showDashboard();
@@ -740,11 +818,14 @@
             quickTrend.textContent = `${window.cropData.trend_percentage >= 0 ? '+' : ''}${window.cropData.trend_percentage.toFixed(1)}%`;
             quickTrend.style.color = window.cropData.trend_percentage >= 0 ? '#00ff88' : '#ff4757';
             
-            // Get overall recommendation (simplified)
+            // Get overall recommendation
             const overallAdvice = window.forecastData.overall_advice || '';
-            if (overallAdvice && overallAdvice.includes('SELL')) {
-                quickRecommendation.textContent = 'SELL';
+            if (overallAdvice && overallAdvice.includes('SELL FAST')) {
+                quickRecommendation.textContent = 'SELL FAST';
                 quickRecommendation.style.color = '#ff4757';
+            } else if (overallAdvice && overallAdvice.includes('SELL')) {
+                quickRecommendation.textContent = 'SELL';
+                quickRecommendation.style.color = '#ff6b6b';
             } else if (overallAdvice && overallAdvice.includes('HOLD')) {
                 quickRecommendation.textContent = 'HOLD';
                 quickRecommendation.style.color = '#ffa502';
@@ -752,8 +833,8 @@
                 quickRecommendation.textContent = 'MONITOR';
                 quickRecommendation.style.color = '#3742fa';
             } else {
-                quickRecommendation.textContent = 'SELL';
-                quickRecommendation.style.color = '#ff4757';
+                quickRecommendation.textContent = 'MONITOR';
+                quickRecommendation.style.color = '#b0b0b0';
             }
             
             quickStats.style.display = 'flex';
@@ -763,10 +844,12 @@
             document.getElementById('quickStats').style.display = 'none';
         }
 
-        async function loadCropData(cropName) {
+        async function loadCropData(cropName, location) {
             try {
-                console.log(`Fetching data for crop: ${cropName}`);
-                const response = await fetch(`${API_BASE}/crop/${cropName}`);
+                console.log(`Fetching data for crop: ${cropName} @ ${location || 'default'}`);
+                const url = new URL(`${API_BASE}/crop/${cropName}`);
+                if (location) url.searchParams.set('location', location);
+                const response = await fetch(url, { cache: 'no-store' });
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -806,10 +889,13 @@
             }
         }
 
-        async function loadForecast(cropName) {
+        async function loadForecast(cropName, location) {
             try {
-                console.log(`Fetching forecast for crop: ${cropName}`);
-                const response = await fetch(`${API_BASE}/forecast/${cropName}?months=6`);
+                console.log(`Fetching forecast for crop: ${cropName} @ ${location || 'default'}`);
+                const url = new URL(`${API_BASE}/forecast/${cropName}`);
+                url.searchParams.set('months', '6');
+                if (location) url.searchParams.set('location', location);
+                const response = await fetch(url, { cache: 'no-store' });
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -829,6 +915,11 @@
             const overallAdviceText = document.getElementById('overallAdviceText');
             let overallAdvice = data.overall_advice || 'No recommendation available';
             overallAdviceText.textContent = overallAdvice;
+
+            // Override quick 6M trend with forecast-based trend if available
+            if (window.cropData && typeof data.forecast_trend_percentage === 'number') {
+                window.cropData.trend_percentage = data.forecast_trend_percentage;
+            }
 
             // Update forecast list
             const forecastList = document.getElementById('forecastList');
@@ -862,8 +953,8 @@
                 forecastList.appendChild(forecastItem);
             });
 
-            // Store forecast data for chart
-            window.forecastData = data.forecast_data;
+            // Store forecast series for chart separately from metadata used by quick stats
+            window.forecastSeries = data.forecast_data;
             
             // Create the chart
             createChart();
@@ -873,18 +964,47 @@
             }
         }
 
+        async function loadRecommendations(cropName, location) {
+            try {
+                const url = new URL(`${API_BASE}/recommendations`);
+                if (cropName) url.searchParams.set('crop', cropName);
+                if (location) url.searchParams.set('location', location);
+                const response = await fetch(url, { cache: 'no-store' });
+                const data = await response.json();
+
+                // Best location to sell
+                const bestText = document.getElementById('bestLocationText');
+                if (data.best_location_for_crop) {
+                    const b = data.best_location_for_crop;
+                    bestText.textContent = `Sell ${cropName} at ${b.location_label || 'Default'} for best price (₹${b.current_price.toFixed(2)})`;
+                } else {
+                    bestText.textContent = 'Not enough data to compare locations for this crop';
+                }
+
+                // What to grow (on price hike)
+                const growList = document.getElementById('growList');
+                if (data.best_crops_to_grow && data.best_crops_to_grow.length) {
+                    growList.innerHTML = data.best_crops_to_grow.map(g => `• ${g.crop_name} (+${g.trend_percentage.toFixed(1)}%)`).join('<br>');
+                } else {
+                    growList.textContent = 'No strong uptrends detected currently';
+                }
+            } catch (e) {
+                console.error('Error loading recommendations', e);
+            }
+        }
+
         function createChart() {
-            if (!window.historicalData || !window.forecastData) return;
+            if (!window.historicalData || !window.forecastSeries) return;
 
             // Prepare historical data
             const historicalMonths = window.historicalData.map(d => d.month);
             const historicalPrices = window.historicalData.map(d => d.price);
 
             // Prepare forecast data
-            const forecastMonths = window.forecastData.map(d => d.month);
-            const forecastPrices = window.forecastData.map(d => d.price);
-            const forecastLower = window.forecastData.map(d => d.lower);
-            const forecastUpper = window.forecastData.map(d => d.upper);
+            const forecastMonths = window.forecastSeries.map(d => d.month);
+            const forecastPrices = window.forecastSeries.map(d => d.price);
+            const forecastLower = window.forecastSeries.map(d => d.lower);
+            const forecastUpper = window.forecastSeries.map(d => d.upper);
 
             // Create traces
             const historicalTrace = {
@@ -943,6 +1063,7 @@
                 }
             };
 
+            // Fully redraw to avoid stale traces when switching locations
             Plotly.newPlot('chart', [historicalTrace, confidenceTrace, forecastTrace], layout, {
                 responsive: true,
                 displayModeBar: true,
