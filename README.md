@@ -4,22 +4,29 @@ Supports multiple crops: Tomato, Onion, Potato, Rice.
 
 🚀 Features
 
-✅ Multi-crop support – Select which crop's data to analyze (tomato, onion, potato, rice)
-✅ Automatic forecasting – Uses ARIMA model to predict next 6 months' prices
-✅ Graph plotting – Visualizes historical prices + forecast + confidence intervals
-✅ Max/Min price detector – Prints highest and lowest monthly prices for quick reference
-✅ Glut risk detection – Warns when forecasted price is likely to drop below last-year average
-✅ Easy CSV input – Just add monthly prices to a simple CSV file
+📊 Historical Price Data – View monthly crop prices with min, max, and average statistics.
+🔮 Price Forecasting – 6-month ARIMA-based crop price prediction with confidence intervals.
+🧠 Actionable Advice – Intelligent SELL / HOLD recommendations based on predicted price movements.
+📍 Location-Aware Data – Supports multiple locations for price comparisons.
+🌱 Best Crops to Grow – Identifies crops with strong positive trends (price hike > 5%).
 
 
-🗂 Project Structure
-AI_Crop_Forecast/
-├── tomato_prices.csv
-├── onion_prices.csv
-├── potato_prices.csv
-├── rice_prices.csv
-├── crop_price_forecast.py
-└── README.md
+.
+├── backend.py                               
+├── data/                                    
+│   ├── food_bazaar_tomato_prices.csv        
+│   ├── reliance_digital_tomato_prices.csv   
+│   ├── food_bazaar_rice_prices.csv          
+│   ├── reliance_digital_rice_prices.csv     
+│   ├── food_bazaar_wheat_prices.csv         
+│   ├── reliance_digital_wheat_prices.csv    
+│   ├── food_bazaar_potato_prices.csv        
+│   ├── reliance_digital_potato_prices.csv   
+│   ├── food_bazaar_onion_prices.csv         
+│   └── reliance_digital_onion_prices.csv    
+|       
+└── README.md                                
+
 
 
 📥 Installation
@@ -51,13 +58,13 @@ price → Average market price for that crop in that month
 
 Run the script and choose a crop:
 
-python crop_price_forecast.py
+python backend.py
 
 ▶ How to Run
 
 Run the script and choose a crop:
 
-python crop_price_forecast.py
+python backend.py
 
 
 🧠 How It Works
